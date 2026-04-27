@@ -1,0 +1,44 @@
+name: Deploy to Railway
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    needs: [] # Railway auto-deploys on push — this just tracks it
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Railway CLI and deploy
+        run: |
+          npm install -g @railway/cli
+          railway up --service backend --detach
+          railway up --service frontend --detach
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          # Railway Token is: 9912a712-2c06-413e-9ef0-b7ebf5677324
+          # Add it to GitHub Secrets as RAILWAY_TOKEN (Settings → Secrets → Actions)
+
+      - name: Notify deploy success
+        if: success()
+        run: echo "✅ Deployed to Railway successfully"
+
+      - name: Create issue on deploy failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🚨 Deploy Failed: ${context.sha.substring(0, 7)}`,
+              body: `**Deploy failed for commit** \`${context.sha.substring(0, 7)}\`\n\n[View run](${runUrl})\n\n*Auto-created by GitHub Actions.*`,
+              labels: ['bug', 'deploy-failure', 'auto-generated'],
+            })

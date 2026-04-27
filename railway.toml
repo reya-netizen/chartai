@@ -1,0 +1,5 @@
+# railway.toml - tells Railway how to deploy your app
+# Frontend and Backend are deployed as separate services
+
+[build]
+builder = "nixpacks"
